@@ -5,6 +5,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useEffect, useCallback, useRef, type ReactNode } from "react";
 import { Bold, Italic, Heading2, Undo, Redo } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 type WritingEditorProps = {
   content: string;
@@ -13,6 +14,7 @@ type WritingEditorProps = {
 };
 
 export function WritingEditor({ content, onUpdate, placeholder }: WritingEditorProps) {
+  const t = useT();
   const onUpdateRef = useRef(onUpdate);
   useEffect(() => {
     onUpdateRef.current = onUpdate;
@@ -23,7 +25,7 @@ export function WritingEditor({ content, onUpdate, placeholder }: WritingEditorP
     extensions: [
       StarterKit,
       Placeholder.configure({
-        placeholder: placeholder ?? "Start writing, or use the AI assistant on the right...",
+        placeholder: placeholder ?? t("ws.defaultPlaceholder"),
       }),
     ],
     content,
@@ -95,7 +97,7 @@ export function WritingEditor({ content, onUpdate, placeholder }: WritingEditorP
           <Redo size={14} />
         </ToolbarButton>
         <div className="ml-auto text-xs text-muted">
-          {editor.storage.characterCount?.characters?.() ?? editor.getText().length} chars
+          {editor.storage.characterCount?.characters?.() ?? editor.getText().length} {t("common.chars")}
         </div>
       </div>
       <EditorContent editor={editor} />

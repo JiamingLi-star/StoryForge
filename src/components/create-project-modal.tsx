@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import type { Genre } from "@/types";
 
-const GENRE_OPTIONS: Genre[] = ["玄幻", "修仙", "都市", "言情", "悬疑", "科幻", "历史", "其他"];
-const PERIOD_OPTIONS = ["现代", "古代", "未来", "架空"];
+const GENRE_OPTIONS: Genre[] = ["\u7384\u5e7b", "\u4fee\u4ed9", "\u90fd\u5e02", "\u8a00\u60c5", "\u60ac\u7591", "\u79d1\u5e7b", "\u5386\u53f2", "\u5176\u4ed6"];
+const PERIOD_OPTIONS = ["\u73b0\u4ee3", "\u53e4\u4ee3", "\u672a\u6765", "\u67b6\u7a7a"];
 
 type CreateProjectModalProps = {
   open: boolean;
@@ -14,9 +15,10 @@ type CreateProjectModalProps = {
 };
 
 export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectModalProps) {
+  const t = useT();
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
-  const [genre, setGenre] = useState<Genre>("玄幻");
+  const [genre, setGenre] = useState<Genre>("\u7384\u5e7b");
   const [synopsis, setSynopsis] = useState("");
   const [worldBrief, setWorldBrief] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -45,8 +47,8 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
       <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface p-6 shadow-2xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted uppercase tracking-wider">New Story</p>
-            <h3 className="text-xl font-bold text-foreground">创建写作项目</h3>
+            <p className="text-xs text-muted uppercase tracking-wider">{t("modal.newStory")}</p>
+            <h3 className="text-xl font-bold text-foreground">{t("modal.createProject")}</h3>
           </div>
           <button
             type="button"
@@ -69,26 +71,26 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
         {step === 1 ? (
           <div className="space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-sm text-muted">故事标题</span>
+              <span className="text-sm text-muted">{t("modal.storyTitle")}</span>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm outline-none ring-accent focus:ring-2 transition"
-                placeholder="例如：苍穹裂痕"
+                placeholder={t("modal.titlePlaceholder")}
               />
             </label>
             <label className="block space-y-1.5">
-              <span className="text-sm text-muted">一句话简介</span>
+              <span className="text-sm text-muted">{t("modal.synopsis")}</span>
               <textarea
                 value={synopsis}
                 onChange={(e) => setSynopsis(e.target.value)}
                 rows={3}
                 className="w-full rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm outline-none ring-accent focus:ring-2 transition"
-                placeholder="描述故事的核心冲突和看点"
+                placeholder={t("modal.synopsisPlaceholder")}
               />
             </label>
             <div className="space-y-1.5">
-              <p className="text-sm text-muted">题材类型</p>
+              <p className="text-sm text-muted">{t("modal.genre")}</p>
               <div className="flex flex-wrap gap-2">
                 {GENRE_OPTIONS.map((g) => (
                   <button
@@ -108,17 +110,17 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
         ) : (
           <div className="space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-sm text-muted">世界观简述</span>
+              <span className="text-sm text-muted">{t("modal.worldBrief")}</span>
               <textarea
                 value={worldBrief}
                 onChange={(e) => setWorldBrief(e.target.value)}
                 rows={4}
                 className="w-full rounded-lg border border-border bg-surface-2 px-4 py-3 text-sm outline-none ring-accent focus:ring-2 transition"
-                placeholder="简述故事发生的时代、秩序和关键规则（可稍后补充）"
+                placeholder={t("modal.worldBriefPlaceholder")}
               />
             </label>
             <div className="space-y-1.5">
-              <p className="text-sm text-muted">时代设定</p>
+              <p className="text-sm text-muted">{t("modal.era")}</p>
               <div className="flex gap-2">
                 {PERIOD_OPTIONS.map((period) => (
                   <button
@@ -141,7 +143,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
               onClick={() => setStep(1)}
               className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition hover:bg-surface-2"
             >
-              上一步
+              {t("modal.prevStep")}
             </button>
           )}
           {step === 1 ? (
@@ -151,7 +153,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
               disabled={!title.trim()}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50"
             >
-              下一步
+              {t("modal.nextStep")}
             </button>
           ) : (
             <button
@@ -160,7 +162,7 @@ export function CreateProjectModal({ open, onClose, onCreated }: CreateProjectMo
               disabled={submitting}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:opacity-50"
             >
-              {submitting ? "创建中..." : "创建故事"}
+              {submitting ? t("modal.creating") : t("modal.createStory")}
             </button>
           )}
         </div>

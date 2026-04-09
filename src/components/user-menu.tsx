@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Moon, Settings, Sun, UserCircle } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 type ThemeMode = "dark" | "light" | "system";
 
@@ -17,10 +18,11 @@ function applyTheme(mode: ThemeMode) {
 }
 
 export function UserMenu() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem("theme-mode") as ThemeMode | null) ?? "system";
+    if (typeof window === "undefined") return "dark";
+    return (localStorage.getItem("theme-mode") as ThemeMode | null) ?? "dark";
   });
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +44,7 @@ export function UserMenu() {
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
     const onChange = () => {
-      const stored = (localStorage.getItem("theme-mode") as ThemeMode | null) ?? "system";
+      const stored = (localStorage.getItem("theme-mode") as ThemeMode | null) ?? "dark";
       if (stored === "system") applyTheme("system");
     };
     mediaQuery.addEventListener("change", onChange);
@@ -77,7 +79,7 @@ export function UserMenu() {
 
           <div className="my-1 border-t border-border" />
 
-          <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted">Theme</p>
+          <p className="px-2 py-1 text-[11px] uppercase tracking-wide text-muted">{t("menu.theme")}</p>
           <div className="mb-1 grid grid-cols-3 gap-1 px-1">
             <button
               type="button"
@@ -104,7 +106,7 @@ export function UserMenu() {
                 themeMode === "system" ? "bg-accent/20 text-accent" : "text-muted hover:bg-surface-2"
               }`}
             >
-              Auto
+              {t("menu.auto")}
             </button>
           </div>
 
@@ -116,7 +118,7 @@ export function UserMenu() {
             className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-surface-2"
           >
             <UserCircle size={14} />
-            Account Details
+            {t("menu.account")}
           </Link>
           <Link
             href="/settings"
@@ -124,7 +126,7 @@ export function UserMenu() {
             className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground transition hover:bg-surface-2"
           >
             <Settings size={14} />
-            Settings
+            {t("menu.settings")}
           </Link>
         </div>
       )}

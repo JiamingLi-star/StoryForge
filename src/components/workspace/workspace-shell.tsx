@@ -35,16 +35,10 @@ import {
 import { jsPDF } from "jspdf";
 import { WritingEditor } from "@/components/editor/writing-editor";
 import { buildPrompt, buildEventSuggestionPrompt } from "@/lib/prompts";
+import { useT } from "@/lib/i18n";
 import type { StoryEvent, Character, WorldSetting, Project, AIMode, SceneHistory } from "@/types";
 
 type LeftTab = "events" | "characters" | "world";
-
-const AI_TAB_LABELS: Record<AIMode, string> = {
-  continue: "续写",
-  expand: "扩写",
-  rewrite: "改写",
-  unstuck: "卡壳了",
-};
 
 function SortableEventCard({
   event,
@@ -97,6 +91,7 @@ function SortableEventCard({
 }
 
 export function WorkspaceShell({ projectId }: { projectId: string }) {
+  const t = useT();
   const [project, setProject] = useState<Project | null>(null);
   const [leftTab, setLeftTab] = useState<LeftTab>("events");
   const [aiTab, setAiTab] = useState<AIMode>("continue");
@@ -193,7 +188,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       const href = anchor.getAttribute("href");
       if (!href || href.startsWith("#")) return;
-      const confirmLeave = window.confirm("当前内容尚未保存，确定离开当前页面吗？");
+      const confirmLeave = window.confirm(t("ws.unsavedWarning"));
       if (!confirmLeave) {
         event.preventDefault();
         event.stopPropagation();
@@ -201,7 +196,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     };
     document.addEventListener("click", handleDocumentNavigation, true);
     return () => document.removeEventListener("click", handleDocumentNavigation, true);
-  }, [saved, saving]);
+  }, [saved, saving, t]);
 
   const saveScene = useCallback(async (content: string) => {
     if (!selectedEventId) return;
@@ -374,7 +369,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       const data = await res.json();
       setAiResults(data.results ?? []);
     } catch {
-      setAiResults(["AI generation failed. Please try again."]);
+      setAiResults([t("ai.genFailed")]);
     }
     setGenerating(false);
   };
@@ -404,7 +399,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       const data = await res.json();
       setAiResults(data.results ?? []);
     } catch {
-      setAiResults(["Event suggestion failed."]);
+      setAiResults([t("ai.suggestFailed")]);
     }
     setGenerating(false);
   };
@@ -565,10 +560,17 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     loadAll();
   };
 
+  const AI_TAB_LABELS: Record<AIMode, string> = {
+    continue: t("ai.continue"),
+    expand: t("ai.expand"),
+    rewrite: t("ai.rewrite"),
+    unstuck: t("ai.unstuck"),
+  };
+
   const leftTabs: { key: LeftTab; label: string; icon: React.ReactNode }[] = [
-    { key: "events", label: "事件", icon: <Sparkles size={14} /> },
-    { key: "characters", label: "人物", icon: <User size={14} /> },
-    { key: "world", label: "世界观", icon: <Globe size={14} /> },
+    { key: "events", label: t("nav.events"), icon: <Sparkles size={14} /> },
+    { key: "characters", label: t("nav.characters"), icon: <User size={14} /> },
+    { key: "world", label: t("nav.world"), icon: <Globe size={14} /> },
   ];
 
   return (
@@ -594,7 +596,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         {leftTab === "events" && (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium">故事事件线</h3>
+              <h3 className="text-sm font-medium">{t("ws.eventTimeline")}</h3>
               <button
                 type="button"
                 onClick={() => setShowNewEvent(true)}
@@ -606,14 +608,14 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
 
             {showNewEvent && (
               <div className="mb-3 space-y-2 rounded-lg border border-accent/30 bg-accent/5 p-3">
-                <input value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} placeholder="Event title" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1" />
-                <input value={newEventWho} onChange={(e) => setNewEventWho(e.target.value)} placeholder="Who is involved" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
-                <input value={newEventWhere} onChange={(e) => setNewEventWhere(e.target.value)} placeholder="Where" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
-                <input value={newEventWhat} onChange={(e) => setNewEventWhat(e.target.value)} placeholder="What happened" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
-                <input value={newEventConsequence} onChange={(e) => setNewEventConsequence(e.target.value)} placeholder="Consequence" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newEventTitle} onChange={(e) => setNewEventTitle(e.target.value)} placeholder={t("ws.eventTitle")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1" />
+                <input value={newEventWho} onChange={(e) => setNewEventWho(e.target.value)} placeholder={t("ws.whoInvolved")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newEventWhere} onChange={(e) => setNewEventWhere(e.target.value)} placeholder={t("ws.where")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newEventWhat} onChange={(e) => setNewEventWhat(e.target.value)} placeholder={t("ws.whatHappened")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newEventConsequence} onChange={(e) => setNewEventConsequence(e.target.value)} placeholder={t("ws.consequence")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
                 <div className="flex gap-2">
-                  <button type="button" onClick={handleCreateEvent} className="rounded bg-accent px-2 py-1 text-xs text-white">Add</button>
-                  <button type="button" onClick={() => setShowNewEvent(false)} className="rounded border border-border px-2 py-1 text-xs text-muted">Cancel</button>
+                  <button type="button" onClick={handleCreateEvent} className="rounded bg-accent px-2 py-1 text-xs text-white">{t("common.add")}</button>
+                  <button type="button" onClick={() => setShowNewEvent(false)} className="rounded border border-border px-2 py-1 text-xs text-muted">{t("common.cancel")}</button>
                 </div>
               </div>
             )}
@@ -635,7 +637,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             </DndContext>
 
             {events.length === 0 && !showNewEvent && (
-              <p className="mt-4 text-center text-xs text-muted">Click + to add your first event.</p>
+              <p className="mt-4 text-center text-xs text-muted">{t("ws.addFirstEvent")}</p>
             )}
 
             <button
@@ -644,7 +646,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent transition hover:bg-accent/20"
             >
               <Sparkles size={12} />
-              AI suggest next event
+              {t("ws.aiSuggestEvent")}
             </button>
           </>
         )}
@@ -652,7 +654,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         {leftTab === "characters" && (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium">人物管理</h3>
+              <h3 className="text-sm font-medium">{t("ws.characterMgmt")}</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -668,15 +670,15 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             {showNewChar && (
               <div className="mb-3 space-y-2 rounded-lg border border-accent/30 bg-accent/5 p-3">
                 <p className="text-xs text-muted">
-                  {editingCharacterId ? "Editing character" : "Add character"}
+                  {editingCharacterId ? t("ws.editingChar") : t("ws.addChar")}
                 </p>
-                <input value={newCharName} onChange={(e) => setNewCharName(e.target.value)} placeholder="Name" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1" />
-                <input value={newCharRole} onChange={(e) => setNewCharRole(e.target.value)} placeholder="Role (主角 / 配角 / 反派)" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
-                <input value={newCharPersonality} onChange={(e) => setNewCharPersonality(e.target.value)} placeholder="Personality traits" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
-                <input value={newCharBackground} onChange={(e) => setNewCharBackground(e.target.value)} placeholder="Background story" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newCharName} onChange={(e) => setNewCharName(e.target.value)} placeholder={t("ws.charName")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1" />
+                <input value={newCharRole} onChange={(e) => setNewCharRole(e.target.value)} placeholder={t("ws.charRole")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newCharPersonality} onChange={(e) => setNewCharPersonality(e.target.value)} placeholder={t("ws.charPersonality")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newCharBackground} onChange={(e) => setNewCharBackground(e.target.value)} placeholder={t("ws.charBackground")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
                 <div className="flex gap-2">
                   <button type="button" onClick={handleSubmitCharacter} className="rounded bg-accent px-2 py-1 text-xs text-white">
-                    {editingCharacterId ? "Save" : "Add"}
+                    {editingCharacterId ? t("common.save") : t("common.add")}
                   </button>
                   <button
                     type="button"
@@ -686,7 +688,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
                     }}
                     className="rounded border border-border px-2 py-1 text-xs text-muted"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </div>
               </div>
@@ -732,7 +734,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         {leftTab === "world" && (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium">世界观设定</h3>
+              <h3 className="text-sm font-medium">{t("ws.worldSettings")}</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -748,14 +750,14 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             {showNewWorld && (
               <div className="mb-3 space-y-2 rounded-lg border border-accent/30 bg-accent/5 p-3">
                 <p className="text-xs text-muted">
-                  {editingWorldId ? "Editing world setting" : "Add world setting"}
+                  {editingWorldId ? t("ws.editingWorld") : t("ws.addWorld")}
                 </p>
-                <input value={newWorldName} onChange={(e) => setNewWorldName(e.target.value)} placeholder="Name" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1" />
-                <input value={newWorldCategory} onChange={(e) => setNewWorldCategory(e.target.value)} placeholder="Category (地理 / 势力 / 力量体系)" className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
-                <textarea value={newWorldDesc} onChange={(e) => setNewWorldDesc(e.target.value)} placeholder="Description" rows={3} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <input value={newWorldName} onChange={(e) => setNewWorldName(e.target.value)} placeholder={t("ws.worldName")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1" />
+                <input value={newWorldCategory} onChange={(e) => setNewWorldCategory(e.target.value)} placeholder={t("ws.worldCategory")} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
+                <textarea value={newWorldDesc} onChange={(e) => setNewWorldDesc(e.target.value)} placeholder={t("ws.worldDesc")} rows={3} className="w-full rounded border border-border bg-surface-2 px-2 py-1.5 text-xs outline-none ring-accent focus:ring-1" />
                 <div className="flex gap-2">
                   <button type="button" onClick={handleSubmitWorld} className="rounded bg-accent px-2 py-1 text-xs text-white">
-                    {editingWorldId ? "Save" : "Add"}
+                    {editingWorldId ? t("common.save") : t("common.add")}
                   </button>
                   <button
                     type="button"
@@ -765,7 +767,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
                     }}
                     className="rounded border border-border px-2 py-1 text-xs text-muted"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </div>
               </div>
@@ -808,10 +810,10 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       <main className="overflow-y-auto border-r border-border bg-background p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div>
-            <p className="text-xs text-muted">{project?.title ?? "Loading..."}</p>
+            <p className="text-xs text-muted">{project?.title ?? t("common.loading")}</p>
             <h1 className="flex items-center gap-2 text-lg font-semibold">
               <Pencil size={14} className="text-muted" />
-              {selectedEvent?.title ?? "Select an event to start writing"}
+              {selectedEvent?.title ?? t("ws.selectEvent")}
             </h1>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted">
@@ -822,7 +824,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
               className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-accent disabled:opacity-50"
             >
               <Save size={12} />
-              Save
+              {t("ws.save")}
             </button>
             <button
               type="button"
@@ -831,7 +833,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
               className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-accent disabled:opacity-50"
             >
               <FileClock size={12} />
-              History
+              {t("ws.history")}
             </button>
             <div className="relative">
               <button
@@ -841,48 +843,20 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
                 className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-accent disabled:opacity-50"
               >
                 <Download size={12} />
-                Export
+                {t("ws.export")}
               </button>
               {showExportMenu && (
                 <div className="absolute right-0 z-20 mt-1 w-36 rounded-lg border border-border bg-surface p-1 shadow-xl">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleExport("word");
-                      setShowExportMenu(false);
-                    }}
-                    className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2"
-                  >
+                  <button type="button" onClick={() => { handleExport("word"); setShowExportMenu(false); }} className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2">
                     Word (.doc)
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleExport("pdf");
-                      setShowExportMenu(false);
-                    }}
-                    className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2"
-                  >
+                  <button type="button" onClick={() => { handleExport("pdf"); setShowExportMenu(false); }} className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2">
                     PDF (.pdf)
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleExport("txt");
-                      setShowExportMenu(false);
-                    }}
-                    className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2"
-                  >
+                  <button type="button" onClick={() => { handleExport("txt"); setShowExportMenu(false); }} className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2">
                     Text (.txt)
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleExport("md");
-                      setShowExportMenu(false);
-                    }}
-                    className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2"
-                  >
+                  <button type="button" onClick={() => { handleExport("md"); setShowExportMenu(false); }} className="block w-full rounded px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-2">
                     Markdown (.md)
                   </button>
                 </div>
@@ -894,7 +868,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
               ) : (
                 <Check size={12} className={saved ? "text-success" : "text-muted"} />
               )}
-              {saving ? "Saving..." : saved ? "Saved" : "Unsaved"}
+              {saving ? t("ws.saving") : saved ? t("ws.saved") : t("ws.unsaved")}
             </span>
           </div>
         </div>
@@ -902,38 +876,23 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         {showHistoryPanel && (
           <div className="mb-4 rounded-lg border border-border bg-surface p-3">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-medium">History Versions</p>
-              <button
-                type="button"
-                onClick={() => setShowHistoryPanel(false)}
-                className="text-xs text-muted hover:text-foreground"
-              >
-                Close
+              <p className="text-sm font-medium">{t("ws.historyVersions")}</p>
+              <button type="button" onClick={() => setShowHistoryPanel(false)} className="text-xs text-muted hover:text-foreground">
+                {t("common.close")}
               </button>
             </div>
             {sceneHistory.length === 0 ? (
-              <p className="text-xs text-muted">No history yet.</p>
+              <p className="text-xs text-muted">{t("ws.noHistory")}</p>
             ) : (
               <div className="max-h-48 space-y-2 overflow-y-auto">
                 {sceneHistory.map((version) => (
-                  <div
-                    key={version.id}
-                    className="flex items-center justify-between rounded border border-border bg-surface-2 px-2 py-2"
-                  >
+                  <div key={version.id} className="flex items-center justify-between rounded border border-border bg-surface-2 px-2 py-2">
                     <div>
-                      <p className="text-xs text-foreground">
-                        {new Date(version.created_at).toLocaleString()}
-                      </p>
-                      <p className="max-w-[520px] truncate text-xs text-muted">
-                        {version.content.replace(/<[^>]+>/g, "").slice(0, 80)}
-                      </p>
+                      <p className="text-xs text-foreground">{new Date(version.created_at).toLocaleString()}</p>
+                      <p className="max-w-[520px] truncate text-xs text-muted">{version.content.replace(/<[^>]+>/g, "").slice(0, 80)}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRestoreHistory(version.id)}
-                      className="rounded border border-border px-2 py-1 text-xs text-foreground hover:border-accent"
-                    >
-                      Restore
+                    <button type="button" onClick={() => handleRestoreHistory(version.id)} className="rounded border border-border px-2 py-1 text-xs text-foreground hover:border-accent">
+                      {t("ws.restore")}
                     </button>
                   </div>
                 ))}
@@ -945,17 +904,17 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         {selectedEvent ? (
           <>
             <div className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm text-muted">
-              <strong className="text-foreground">Event:</strong> {selectedEvent.who} at {selectedEvent.where} — {selectedEvent.what_happened}. Result: {selectedEvent.consequence}
+              <strong className="text-foreground">{t("ws.eventInfo")}</strong> {selectedEvent.who} {t("ws.at")} {selectedEvent.where} — {selectedEvent.what_happened}. {t("ws.result")} {selectedEvent.consequence}
             </div>
             <WritingEditor
               content={editorContent}
               onUpdate={handleEditorUpdate}
-              placeholder={`Start writing the scene for "${selectedEvent.title}"...`}
+              placeholder={selectedEvent ? t("ws.editorPlaceholder", { title: selectedEvent.title }) : t("ws.defaultPlaceholder")}
             />
           </>
         ) : (
           <div className="flex h-64 items-center justify-center text-sm text-muted">
-            Select an event from the left panel to begin writing.
+            {t("ws.selectEventHint")}
           </div>
         )}
       </main>
@@ -965,7 +924,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         <div className="mb-4 flex items-center justify-between">
           <h3 className="inline-flex items-center gap-2 text-sm font-medium">
             <Bot size={16} className="text-accent" />
-            AI Writing Assistant
+            {t("ai.title")}
           </h3>
           <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">DeepSeek</span>
         </div>
@@ -986,10 +945,10 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         </div>
 
         <p className="mb-3 text-xs text-muted">
-          {aiTab === "continue" && "Generate multiple continuation options for your current text."}
-          {aiTab === "expand" && "Expand a brief passage into rich, detailed writing."}
-          {aiTab === "rewrite" && "Rewrite in different styles: literary, colloquial, and concise."}
-          {aiTab === "unstuck" && "Describe your problem and get 3 creative direction suggestions."}
+          {aiTab === "continue" && t("ai.continueDesc")}
+          {aiTab === "expand" && t("ai.expandDesc")}
+          {aiTab === "rewrite" && t("ai.rewriteDesc")}
+          {aiTab === "unstuck" && t("ai.unstuckDesc")}
         </p>
 
         {aiTab === "unstuck" && (
@@ -998,7 +957,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             onChange={(e) => setUnstuckQuestion(e.target.value)}
             rows={3}
             className="mb-3 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none ring-accent focus:ring-1 transition"
-            placeholder="Example: My protagonist just passed the trial, but I don't know how to naturally introduce the antagonist..."
+            placeholder={t("ai.unstuckPlaceholder")}
           />
         )}
 
@@ -1011,19 +970,19 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
           {generating ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              Generating...
+              {t("ai.generating")}
             </>
           ) : (
             <>
               <WandSparkles size={14} />
-              {aiTab === "unstuck" ? "Get ideas" : "Generate"}
+              {aiTab === "unstuck" ? t("ai.getIdeas") : t("ai.generate")}
             </>
           )}
         </button>
 
         {aiResults.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted">Results ({aiResults.length})</p>
+            <p className="text-xs font-medium text-muted">{t("ai.results")} ({aiResults.length})</p>
             {aiResults.map((result, i) => (
               <article key={i} className="rounded-lg border border-border bg-surface-2 p-3 transition hover:border-accent/30">
                 <p className="text-sm leading-6 text-foreground/90">{result}</p>
@@ -1033,7 +992,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
                   className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:underline"
                 >
                   <Plus size={10} />
-                  Apply to editor
+                  {t("ai.applyToEditor")}
                 </button>
               </article>
             ))}
