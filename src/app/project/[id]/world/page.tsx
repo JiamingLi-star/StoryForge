@@ -33,8 +33,17 @@ export default function WorldPage({
   }, [projectId]);
 
   useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+    if (!projectId) return;
+    let cancelled = false;
+    fetch(`/api/world?projectId=${projectId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setSettings(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   const categories = useMemo(() => {
     const cats = new Set(settings.map((s) => s.category));

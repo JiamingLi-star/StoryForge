@@ -39,8 +39,17 @@ export default function CharactersPage({
   }, [projectId]);
 
   useEffect(() => {
-    loadCharacters();
-  }, [loadCharacters]);
+    if (!projectId) return;
+    let cancelled = false;
+    fetch(`/api/characters?projectId=${projectId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setCharacters(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   const selectCharacter = (character: Character) => {
     setSelectedId(character.id);

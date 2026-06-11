@@ -38,8 +38,17 @@ export default function EventsPage({
   }, [projectId]);
 
   useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+    if (!projectId) return;
+    let cancelled = false;
+    fetch(`/api/events?projectId=${projectId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setEvents(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   const selectEvent = (event: StoryEvent) => {
     setSelectedId(event.id);

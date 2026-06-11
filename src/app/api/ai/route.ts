@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-const DEEPSEEK_BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
+const AI_API_KEY = process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY;
+const AI_BASE_URL = process.env.AI_BASE_URL || process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
+const AI_MODEL = process.env.AI_MODEL || "deepseek-chat";
+
+function getChatCompletionsUrl(baseUrl: string) {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  if (normalized.endsWith("/chat/completions")) return normalized;
+  if (normalized.endsWith("/v1")) return `${normalized}/chat/completions`;
+  return `${normalized}/v1/chat/completions`;
+}
 
 export async function POST(request: NextRequest) {
-  if (!DEEPSEEK_API_KEY) {
+  if (!AI_API_KEY) {
     return NextResponse.json(
       { results: generateFallbackResults() },
       { status: 200 }
@@ -14,14 +22,14 @@ export async function POST(request: NextRequest) {
   try {
     const { system, user } = await request.json();
 
-    const response = await fetch(`${DEEPSEEK_BASE_URL}/v1/chat/completions`, {
+    const response = await fetch(getChatCompletionsUrl(AI_BASE_URL), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        Authorization: `Bearer ${AI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "deepseek-chat",
+        model: AI_MODEL,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -33,8 +41,11 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("DeepSeek API error:", error);
-      return NextResponse.json({ error: "AI service error" }, { status: 502 });
+      console.error("AI provider error:", error);
+      return NextResponse.json(
+        { error: "AI service is unavailable. Please check the API key, base URL, model, or provider quota." },
+        { status: 502 }
+      );
     }
 
     const data = await response.json();

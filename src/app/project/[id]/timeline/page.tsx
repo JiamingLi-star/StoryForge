@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { ProjectNav } from "@/components/project-nav";
 import { useT } from "@/lib/i18n";
 import type { StoryEvent, Character } from "@/types";
@@ -28,19 +28,21 @@ export default function TimelinePage({
     params.then((p) => setProjectId(p.id));
   }, [params]);
 
-  const loadData = useCallback(async () => {
-    if (!projectId) return;
-    const [evRes, chRes] = await Promise.all([
-      fetch(`/api/events?projectId=${projectId}`),
-      fetch(`/api/characters?projectId=${projectId}`),
-    ]);
-    setEvents(await evRes.json());
-    setCharacters(await chRes.json());
-  }, [projectId]);
-
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!projectId) return;
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/events?projectId=${projectId}`).then((res) => res.json()),
+      fetch(`/api/characters?projectId=${projectId}`).then((res) => res.json()),
+    ]).then(([eventData, characterData]) => {
+      if (cancelled) return;
+      setEvents(eventData);
+      setCharacters(characterData);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   const nodes: RelNode[] = useMemo(() => {
     return events.map((ev) => {

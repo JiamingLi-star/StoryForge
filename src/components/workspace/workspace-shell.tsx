@@ -104,6 +104,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(true);
   const [aiResults, setAiResults] = useState<string[]>([]);
+  const [aiError, setAiError] = useState("");
   const [unstuckQuestion, setUnstuckQuestion] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
@@ -198,6 +199,13 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     return () => document.removeEventListener("click", handleDocumentNavigation, true);
   }, [saved, saving, t]);
 
+  const loadHistory = useCallback(async () => {
+    if (!selectedEventId) return;
+    const res = await fetch(`/api/scenes/history?eventId=${selectedEventId}`);
+    const versions = await res.json();
+    setSceneHistory(versions);
+  }, [selectedEventId]);
+
   const saveScene = useCallback(async (content: string) => {
     if (!selectedEventId) return;
     setSaving(true);
@@ -209,7 +217,10 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     });
     setSaving(false);
     setSaved(true);
-  }, [selectedEventId]);
+    if (showHistoryPanel) {
+      await loadHistory();
+    }
+  }, [loadHistory, selectedEventId, showHistoryPanel]);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -289,13 +300,6 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     await saveScene(editorContent);
   }, [editorContent, saveScene]);
 
-  const loadHistory = useCallback(async () => {
-    if (!selectedEventId) return;
-    const res = await fetch(`/api/scenes/history?eventId=${selectedEventId}`);
-    const versions = await res.json();
-    setSceneHistory(versions);
-  }, [selectedEventId]);
-
   useEffect(() => {
     if (!selectedEventId) {
       return;
@@ -310,6 +314,16 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       cancelled = true;
     };
   }, [selectedEventId]);
+
+  const toggleHistoryPanel = useCallback(() => {
+    setShowHistoryPanel((value) => {
+      const nextValue = !value;
+      if (nextValue) {
+        void loadHistory();
+      }
+      return nextValue;
+    });
+  }, [loadHistory]);
 
   const handleRestoreHistory = useCallback(async (historyId: string) => {
     if (!selectedEventId) return;
@@ -343,6 +357,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     if (!project) return;
     setGenerating(true);
     setAiResults([]);
+    setAiError("");
 
     const ctx = {
       projectTitle: project.title,
@@ -367,17 +382,28 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         body: JSON.stringify({ system, user }),
       });
       const data = await res.json();
-      setAiResults(data.results ?? []);
+      if (!res.ok || data.error) {
+        setAiError(data.error ?? t("ai.genFailed"));
+        return;
+      }
+      const results = data.results ?? [];
+      if (results.length === 0) {
+        setAiError(t("ai.genFailed"));
+        return;
+      }
+      setAiResults(results);
     } catch {
-      setAiResults([t("ai.genFailed")]);
+      setAiError(t("ai.genFailed"));
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
   };
 
   const handleSuggestEvent = async () => {
     if (!project) return;
     setGenerating(true);
     setAiResults([]);
+    setAiError("");
     const ctx = {
       projectTitle: project.title,
       genre: project.genre,
@@ -397,11 +423,21 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         body: JSON.stringify({ system, user }),
       });
       const data = await res.json();
-      setAiResults(data.results ?? []);
+      if (!res.ok || data.error) {
+        setAiError(data.error ?? t("ai.suggestFailed"));
+        return;
+      }
+      const results = data.results ?? [];
+      if (results.length === 0) {
+        setAiError(t("ai.suggestFailed"));
+        return;
+      }
+      setAiResults(results);
     } catch {
-      setAiResults([t("ai.suggestFailed")]);
+      setAiError(t("ai.suggestFailed"));
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
   };
 
   const applyResult = (text: string) => {
@@ -828,7 +864,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             </button>
             <button
               type="button"
-              onClick={() => setShowHistoryPanel((value) => !value)}
+              onClick={toggleHistoryPanel}
               disabled={!selectedEventId}
               className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-foreground transition hover:border-accent disabled:opacity-50"
             >
@@ -934,7 +970,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             <button
               key={tab}
               type="button"
-              onClick={() => { setAiTab(tab); setAiResults([]); }}
+              onClick={() => { setAiTab(tab); setAiResults([]); setAiError(""); }}
               className={`flex-1 rounded-md px-2 py-1.5 transition ${
                 aiTab === tab ? "bg-background text-foreground" : "text-muted"
               }`}
@@ -979,6 +1015,12 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             </>
           )}
         </button>
+
+        {aiError && (
+          <div className="mb-4 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm leading-6 text-danger">
+            {aiError}
+          </div>
+        )}
 
         {aiResults.length > 0 && (
           <div className="space-y-2">
