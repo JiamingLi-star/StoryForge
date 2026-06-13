@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Bot,
   Check,
+  ChevronDown,
   Download,
   FileClock,
   GripVertical,
@@ -39,6 +40,22 @@ import { useT } from "@/lib/i18n";
 import type { StoryEvent, Character, WorldSetting, Project, AIMode, SceneHistory } from "@/types";
 
 type LeftTab = "events" | "characters" | "world";
+type OutputLengthMode = "auto" | "custom";
+
+type AIUsage = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+};
+
+const AI_MODEL_OPTIONS = [
+  { value: "agnes-2.0-flash", label: "Agnes 2.0 Flash" },
+  { value: "agnes-1.5-flash", label: "Agnes 1.5 Flash" },
+] as const;
+
+const DEMO_TOKEN_QUOTA = 100000;
+
+type AIModelValue = (typeof AI_MODEL_OPTIONS)[number]["value"];
 
 function SortableEventCard({
   event,
@@ -105,6 +122,12 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
   const [saved, setSaved] = useState(true);
   const [aiResults, setAiResults] = useState<string[]>([]);
   const [aiError, setAiError] = useState("");
+  const [appliedResultIndex, setAppliedResultIndex] = useState<number | null>(null);
+  const [selectedAIModel, setSelectedAIModel] = useState<AIModelValue>("agnes-2.0-flash");
+  const [lastAIUsage, setLastAIUsage] = useState<AIUsage | null>(null);
+  const [sessionTokenUsage, setSessionTokenUsage] = useState(0);
+  const [outputLengthMode, setOutputLengthMode] = useState<OutputLengthMode>("auto");
+  const [customCharCount, setCustomCharCount] = useState(500);
   const [unstuckQuestion, setUnstuckQuestion] = useState("");
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showHistoryPanel, setShowHistoryPanel] = useState(false);
@@ -134,6 +157,8 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     () => events.find((e) => e.id === selectedEventId),
     [events, selectedEventId]
   );
+
+  const remainingTokenQuota = Math.max(DEMO_TOKEN_QUOTA - sessionTokenUsage, 0);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -358,6 +383,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     setGenerating(true);
     setAiResults([]);
     setAiError("");
+    setAppliedResultIndex(null);
 
     const ctx = {
       projectTitle: project.title,
@@ -371,6 +397,10 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       currentContent: editorContent,
       selectedText: "",
       userQuestion: unstuckQuestion,
+      outputLength: {
+        mode: outputLengthMode,
+        targetChars: customCharCount,
+      },
     };
 
     const { system, user } = buildPrompt(aiTab, ctx);
@@ -379,7 +409,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system, user }),
+        body: JSON.stringify({ system, user, model: selectedAIModel }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -390,6 +420,10 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       if (results.length === 0) {
         setAiError(t("ai.genFailed"));
         return;
+      }
+      if (data.usage) {
+        setLastAIUsage(data.usage);
+        setSessionTokenUsage((value) => value + data.usage.total_tokens);
       }
       setAiResults(results);
     } catch {
@@ -404,6 +438,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     setGenerating(true);
     setAiResults([]);
     setAiError("");
+    setAppliedResultIndex(null);
     const ctx = {
       projectTitle: project.title,
       genre: project.genre,
@@ -420,7 +455,7 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system, user }),
+        body: JSON.stringify({ system, user, model: selectedAIModel }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -432,6 +467,10 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
         setAiError(t("ai.suggestFailed"));
         return;
       }
+      if (data.usage) {
+        setLastAIUsage(data.usage);
+        setSessionTokenUsage((value) => value + data.usage.total_tokens);
+      }
       setAiResults(results);
     } catch {
       setAiError(t("ai.suggestFailed"));
@@ -440,11 +479,12 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
     }
   };
 
-  const applyResult = (text: string) => {
+  const applyResult = (text: string, index: number) => {
     const newContent = editorContent
       ? `${editorContent}<p>${text}</p>`
       : `<p>${text}</p>`;
     setEditorContent(newContent);
+    setAppliedResultIndex(index);
     saveScene(newContent);
   };
 
@@ -962,7 +1002,65 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             <Bot size={16} className="text-accent" />
             {t("ai.title")}
           </h3>
-          <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted">DeepSeek</span>
+          <label className="relative inline-flex items-center">
+            <span className="sr-only">{t("ai.model")}</span>
+            <select
+              value={selectedAIModel}
+              onChange={(event) => {
+                setSelectedAIModel(event.target.value as AIModelValue);
+                setAiResults([]);
+                setAiError("");
+                setAppliedResultIndex(null);
+              }}
+              className="h-7 appearance-none rounded-full border border-border bg-surface-2 py-0 pl-3 pr-7 text-xs font-medium text-muted outline-none transition hover:border-accent/50 hover:text-foreground focus:border-accent focus:text-foreground"
+            >
+              {AI_MODEL_OPTIONS.map((model) => (
+                <option key={model.value} value={model.value}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="pointer-events-none absolute right-2 text-muted" />
+          </label>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-border bg-surface-2 p-3">
+          <div className="mb-2 flex items-center justify-between text-xs">
+            <span className="font-medium text-foreground">{t("ai.tokenUsage")}</span>
+            <span className="text-muted">
+              {sessionTokenUsage.toLocaleString()} / {DEMO_TOKEN_QUOTA.toLocaleString()}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-background">
+            <div
+              className="h-full rounded-full bg-accent transition-all"
+              style={{ width: `${Math.min((sessionTokenUsage / DEMO_TOKEN_QUOTA) * 100, 100)}%` }}
+            />
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+            <div>
+              <p className="text-muted">{t("ai.lastRequest")}</p>
+              <p className="mt-0.5 font-medium text-foreground">
+                {(lastAIUsage?.total_tokens ?? 0).toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted">{t("ai.used")}</p>
+              <p className="mt-0.5 font-medium text-foreground">{sessionTokenUsage.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-muted">{t("ai.remaining")}</p>
+              <p className="mt-0.5 font-medium text-foreground">{remainingTokenQuota.toLocaleString()}</p>
+            </div>
+          </div>
+          {lastAIUsage && (
+            <p className="mt-2 text-[11px] leading-5 text-muted">
+              {t("ai.usageBreakdown", {
+                prompt: lastAIUsage.prompt_tokens.toLocaleString(),
+                completion: lastAIUsage.completion_tokens.toLocaleString(),
+              })}
+            </p>
+          )}
         </div>
 
         <div className="mb-4 flex rounded-lg border border-border bg-surface-2 p-0.5 text-xs">
@@ -970,7 +1068,12 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
             <button
               key={tab}
               type="button"
-              onClick={() => { setAiTab(tab); setAiResults([]); setAiError(""); }}
+              onClick={() => {
+                setAiTab(tab);
+                setAiResults([]);
+                setAiError("");
+                setAppliedResultIndex(null);
+              }}
               className={`flex-1 rounded-md px-2 py-1.5 transition ${
                 aiTab === tab ? "bg-background text-foreground" : "text-muted"
               }`}
@@ -978,6 +1081,48 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
               {AI_TAB_LABELS[tab]}
             </button>
           ))}
+        </div>
+
+        <div className="mb-4 rounded-lg border border-border bg-surface-2 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="text-xs font-medium text-foreground">{t("ai.outputLength")}</span>
+            <div className="flex rounded-md border border-border bg-background p-0.5 text-xs">
+              {(["auto", "custom"] as OutputLengthMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setOutputLengthMode(mode)}
+                  className={`rounded px-2 py-1 transition ${
+                    outputLengthMode === mode ? "bg-surface text-foreground" : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {mode === "auto" ? t("ai.lengthAuto") : t("ai.lengthCustom")}
+                </button>
+              ))}
+            </div>
+          </div>
+          {outputLengthMode === "custom" ? (
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <span className="shrink-0">{t("ai.targetChars")}</span>
+              <input
+                type="number"
+                min={50}
+                max={5000}
+                step={50}
+                value={customCharCount}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (Number.isFinite(value)) {
+                    setCustomCharCount(Math.min(Math.max(value, 50), 5000));
+                  }
+                }}
+                className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm text-foreground outline-none ring-accent focus:ring-1"
+              />
+              <span>{t("common.chars")}</span>
+            </label>
+          ) : (
+            <p className="text-xs leading-5 text-muted">{t("ai.lengthAutoHint")}</p>
+          )}
         </div>
 
         <p className="mb-3 text-xs text-muted">
@@ -1022,19 +1167,41 @@ export function WorkspaceShell({ projectId }: { projectId: string }) {
           </div>
         )}
 
+        {appliedResultIndex !== null && (
+          <div
+            aria-live="polite"
+            className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm font-medium text-success"
+          >
+            <Check size={14} />
+            {t("ai.appliedNotice")}
+          </div>
+        )}
+
         {aiResults.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted">{t("ai.results")} ({aiResults.length})</p>
             {aiResults.map((result, i) => (
-              <article key={i} className="rounded-lg border border-border bg-surface-2 p-3 transition hover:border-accent/30">
+              <article
+                key={i}
+                className={`rounded-lg border p-3 transition ${
+                  appliedResultIndex === i
+                    ? "border-success/50 bg-success/5"
+                    : "border-border bg-surface-2 hover:border-accent/30"
+                }`}
+              >
                 <p className="text-sm leading-6 text-foreground/90">{result}</p>
                 <button
                   type="button"
-                  onClick={() => applyResult(result)}
-                  className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:underline"
+                  onClick={() => applyResult(result, i)}
+                  disabled={appliedResultIndex === i}
+                  className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition disabled:cursor-default ${
+                    appliedResultIndex === i
+                      ? "border-success/50 bg-success/15 text-success"
+                      : "border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 hover:border-accent/60"
+                  }`}
                 >
-                  <Plus size={10} />
-                  {t("ai.applyToEditor")}
+                  {appliedResultIndex === i ? <Check size={14} /> : <Plus size={14} />}
+                  {appliedResultIndex === i ? t("ai.appliedToEditor") : t("ai.applyToEditor")}
                 </button>
               </article>
             ))}

@@ -136,6 +136,17 @@ const zh: Translations = {
 
   // AI Panel
   "ai.title": "AI \u5199\u4f5c\u52a9\u624b",
+  "ai.model": "\u6a21\u578b",
+  "ai.tokenUsage": "Token \u7528\u91cf",
+  "ai.lastRequest": "\u672c\u6b21",
+  "ai.used": "\u5df2\u7528",
+  "ai.remaining": "\u5269\u4f59",
+  "ai.usageBreakdown": "\u8f93\u5165 {prompt} / \u8f93\u51fa {completion}",
+  "ai.outputLength": "\u8f93\u51fa\u957f\u5ea6",
+  "ai.lengthAuto": "\u6a21\u578b\u81ea\u7531",
+  "ai.lengthCustom": "\u81ea\u5b9a\u4e49",
+  "ai.targetChars": "\u76ee\u6807",
+  "ai.lengthAutoHint": "\u4e0d\u9650\u5b9a\u5b57\u6570\uff0c\u8ba9\u6a21\u578b\u6839\u636e\u5267\u60c5\u9700\u8981\u81ea\u7136\u51b3\u5b9a\u957f\u5ea6\u3002",
   "ai.continue": "\u7eed\u5199",
   "ai.expand": "\u6269\u5199",
   "ai.rewrite": "\u6539\u5199",
@@ -150,6 +161,8 @@ const zh: Translations = {
   "ai.generate": "\u751f\u6210",
   "ai.results": "\u7ed3\u679c",
   "ai.applyToEditor": "\u5e94\u7528\u5230\u7f16\u8f91\u5668",
+  "ai.appliedToEditor": "\u5df2\u5e94\u7528\u5230\u7f16\u8f91\u5668",
+  "ai.appliedNotice": "\u5df2\u6dfb\u52a0\u5230\u7f16\u8f91\u5668",
   "ai.genFailed": "AI \u751f\u6210\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5\u3002",
   "ai.suggestFailed": "\u4e8b\u4ef6\u63a8\u8350\u5931\u8d25\u3002",
 
@@ -369,6 +382,17 @@ const en: Translations = {
 
   // AI Panel
   "ai.title": "AI Writing Assistant",
+  "ai.model": "Model",
+  "ai.tokenUsage": "Token usage",
+  "ai.lastRequest": "Last",
+  "ai.used": "Used",
+  "ai.remaining": "Left",
+  "ai.usageBreakdown": "Input {prompt} / output {completion}",
+  "ai.outputLength": "Output length",
+  "ai.lengthAuto": "Model decides",
+  "ai.lengthCustom": "Custom",
+  "ai.targetChars": "Target",
+  "ai.lengthAutoHint": "Do not force a fixed length. Let the model choose a natural length for the story moment.",
   "ai.continue": "Continue",
   "ai.expand": "Expand",
   "ai.rewrite": "Rewrite",
@@ -383,6 +407,8 @@ const en: Translations = {
   "ai.generate": "Generate",
   "ai.results": "Results",
   "ai.applyToEditor": "Apply to editor",
+  "ai.appliedToEditor": "Applied to editor",
+  "ai.appliedNotice": "Added to editor",
   "ai.genFailed": "AI generation failed. Please try again.",
   "ai.suggestFailed": "Event suggestion failed.",
 

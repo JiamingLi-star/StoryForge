@@ -12,6 +12,10 @@ type PromptContext = {
   currentContent: string;
   selectedText?: string;
   userQuestion?: string;
+  outputLength?: {
+    mode: "auto" | "custom";
+    targetChars: number;
+  };
 };
 
 function buildContextBlock(ctx: PromptContext): string {
@@ -41,34 +45,42 @@ ${eventBlock || "No events yet."}
 ${worldBlock || "No world settings yet."}`;
 }
 
+function buildLengthInstruction(ctx: PromptContext): string {
+  if (ctx.outputLength?.mode === "custom") {
+    return `Aim for about ${ctx.outputLength.targetChars} Chinese characters.`;
+  }
+  return "Choose the output length flexibly based on the current story need; do not force a fixed word or character count.";
+}
+
 export function buildPrompt(mode: AIMode, ctx: PromptContext): { system: string; user: string } {
   const contextBlock = buildContextBlock(ctx);
+  const lengthInstruction = buildLengthInstruction(ctx);
 
-  const systemBase = `You are a professional Chinese fiction writing assistant. You write in natural, literary Chinese. Follow the story's established tone and style. Always stay consistent with existing characters and world settings. Never break the fourth wall. Output only the creative text itself, no commentary or meta-discussion.`;
+  const systemBase = `You are a professional Chinese fiction writing assistant. You write in natural, literary Chinese. Follow the story's established tone and style. Always stay consistent with existing characters and world settings. Never break the fourth wall. Output only the creative text itself, no commentary or meta-discussion. Do not prefix results with labels such as "选项一", "方案一", "版本一", "Option 1", numbering, or markdown headings.`;
 
   switch (mode) {
     case "continue": {
       return {
         system: `${systemBase}\n\n${contextBlock}`,
-        user: `Continue the following passage naturally. Write 200-400 characters of compelling narrative that advances the current event "${ctx.currentEvent?.title ?? ""}". Provide exactly 3 different continuation options, separated by "---".\n\nCurrent text:\n${ctx.currentContent}`,
+        user: `Continue the following passage naturally with compelling narrative that advances the current event "${ctx.currentEvent?.title ?? ""}". ${lengthInstruction} Provide exactly 3 different continuation options, separated by "---". Do not label the options; each section should contain only the continuation text.\n\nCurrent text:\n${ctx.currentContent}`,
       };
     }
     case "expand": {
       return {
         system: `${systemBase}\n\n${contextBlock}`,
-        user: `Expand the following brief passage into a rich, detailed scene with sensory descriptions, dialogue, and character interiority. Keep the meaning but add depth. Output 300-600 characters.\n\nText to expand:\n${ctx.selectedText ?? ctx.currentContent}`,
+        user: `Expand the following brief passage into a rich, detailed scene with sensory descriptions, dialogue, and character interiority. Keep the meaning but add depth. ${lengthInstruction}\n\nText to expand:\n${ctx.selectedText ?? ctx.currentContent}`,
       };
     }
     case "rewrite": {
       return {
         system: `${systemBase}\n\n${contextBlock}`,
-        user: `Rewrite the following passage in 3 different styles: 1) More formal/literary, 2) More colloquial/vivid, 3) More concise/tight. Separate each version with "---".\n\nText to rewrite:\n${ctx.selectedText ?? ctx.currentContent}`,
+        user: `Rewrite the following passage in 3 different styles: more formal/literary, more colloquial/vivid, and more concise/tight. ${lengthInstruction} Separate each version with "---". Do not label the versions; each section should contain only the rewritten text.\n\nText to rewrite:\n${ctx.selectedText ?? ctx.currentContent}`,
       };
     }
     case "unstuck": {
       return {
         system: `${systemBase}\n\n${contextBlock}`,
-        user: `The writer is stuck at this point in the story. Current event: "${ctx.currentEvent?.title ?? "unknown"}". Their question/problem: "${ctx.userQuestion ?? "I don't know what should happen next."}"\n\nProvide 3 creative suggestions for how to proceed. Each suggestion should be 2-3 sentences describing a possible direction. Separate with "---".`,
+        user: `The writer is stuck at this point in the story. Current event: "${ctx.currentEvent?.title ?? "unknown"}". Their question/problem: "${ctx.userQuestion ?? "I don't know what should happen next."}"\n\nProvide 3 creative suggestions for how to proceed. ${lengthInstruction} Separate with "---". Do not label the suggestions; each section should contain only the suggestion text.`,
       };
     }
   }

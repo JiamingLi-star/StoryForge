@@ -3,12 +3,52 @@ import { NextRequest, NextResponse } from "next/server";
 const AI_API_KEY = process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY;
 const AI_BASE_URL = process.env.AI_BASE_URL || process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com/v1";
 const AI_MODEL = process.env.AI_MODEL || "deepseek-chat";
+const DEFAULT_ALLOWED_MODELS = ["agnes-2.0-flash", "agnes-1.5-flash", "deepseek-chat"];
+const RESULT_LABEL_PATTERN =
+  "(?:选项|方案|版本)\\s*[一二三四五六七八九十\\d]+|Option\\s*\\d+|Version\\s*\\d+|Candidate\\s*\\d+";
+const RESULT_LABEL_PREFIX_RE = new RegExp(
+  `^\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?\\s*(?:${RESULT_LABEL_PATTERN})\\s*(?:[：:.)、\\-]\\s*)?(?:\\*\\*)?\\s*`,
+  "i"
+);
+const RESULT_LABEL_SPLIT_RE = new RegExp(
+  `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?\\s*(?:${RESULT_LABEL_PATTERN})\\s*(?:[：:.)、\\-]\\s*)?(?:\\*\\*)?\\s*`,
+  "gi"
+);
 
 function getChatCompletionsUrl(baseUrl: string) {
   const normalized = baseUrl.replace(/\/+$/, "");
   if (normalized.endsWith("/chat/completions")) return normalized;
   if (normalized.endsWith("/v1")) return `${normalized}/chat/completions`;
   return `${normalized}/v1/chat/completions`;
+}
+
+function getAllowedModels() {
+  const configuredModels = process.env.AI_ALLOWED_MODELS?.split(",") ?? [];
+  return new Set(
+    [AI_MODEL, ...DEFAULT_ALLOWED_MODELS, ...configuredModels]
+      .map((model) => model.trim())
+      .filter(Boolean)
+  );
+}
+
+function resolveModel(model: unknown) {
+  const requestedModel = typeof model === "string" ? model.trim() : "";
+  if (!requestedModel) return AI_MODEL;
+  return getAllowedModels().has(requestedModel) ? requestedModel : AI_MODEL;
+}
+
+function cleanResultLabel(text: string) {
+  return text.replace(RESULT_LABEL_PREFIX_RE, "").trim();
+}
+
+function parseAIResults(content: string) {
+  const sections = content.includes("---")
+    ? content.split("---")
+    : content.split(RESULT_LABEL_SPLIT_RE);
+
+  return sections
+    .map(cleanResultLabel)
+    .filter((section) => section.length > 0);
 }
 
 export async function POST(request: NextRequest) {
@@ -20,7 +60,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { system, user } = await request.json();
+    const { system, user, model } = await request.json();
+    const selectedModel = resolveModel(model);
 
     const response = await fetch(getChatCompletionsUrl(AI_BASE_URL), {
       method: "POST",
@@ -29,7 +70,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${AI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: AI_MODEL,
+        model: selectedModel,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -50,12 +91,16 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content ?? "";
-    const results = content
-      .split("---")
-      .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 0);
+    const usage = data.usage
+      ? {
+          prompt_tokens: Number(data.usage.prompt_tokens ?? 0),
+          completion_tokens: Number(data.usage.completion_tokens ?? 0),
+          total_tokens: Number(data.usage.total_tokens ?? 0),
+        }
+      : null;
+    const results = parseAIResults(content);
 
-    return NextResponse.json({ results });
+    return NextResponse.json({ results, usage, model: selectedModel });
   } catch (error) {
     console.error("AI route error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
